@@ -868,6 +868,28 @@ describe('api: watch', () => {
       key: 'foo',
       oldValue: 2
     })
+
+    await nextTick()
+    Object.defineProperty(obj, 'foo', {
+      value: 3,
+      configurable: true
+    })
+    expect(dummy).toBeUndefined()
+    expect(onTrigger).toHaveBeenCalledTimes(3)
+    expect(events[2]).toMatchObject({
+      type: TriggerOpTypes.ADD,
+      key: 'foo',
+      newValue: 3
+    })
+
+    await nextTick()
+    Object.defineProperty(obj, 'foo', {
+      get() {
+        return 4
+      }
+    })
+    expect(dummy).toBe(3)
+    expect(onTrigger).toHaveBeenCalledTimes(3)
   })
 
   it('should work sync', () => {
