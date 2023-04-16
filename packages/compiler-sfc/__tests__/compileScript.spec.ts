@@ -395,6 +395,39 @@ defineExpose({ foo: 123 })
       })
     })
 
+    test('w/ arry model', () => {
+      // const c = defineModel<[string,number]>(['count','title'],[{default:'1'},{default:0}])
+      // const c = defineModel(['count','title'],[{default:'1'},{default:0}])
+      // const c = defineModel('count',{default:0})
+      const { content } = compile(
+        `
+        <script setup>
+        const c = defineModel(['count','title'],[{default:'1'},{default:0}])
+        </script>
+        `,
+        { defineModel: true }
+      )
+      expect(content).toMatchInlineSnapshot(`
+        "import { useModel as _useModel } from 'vue'
+
+        export default {
+          props: {
+            \\"count\\": {default:'1'},
+            \\"title\\": {default:0},
+          },
+          emits: [\\"update:count\\", \\"update:title\\"],
+          setup(__props, { expose: __expose }) {
+          __expose();
+
+                const c = _useModel(__props, [\\"count\\",\\"title\\"])
+                
+        return { c }
+        }
+
+        }"
+      `)
+    })
+
     test('w/ defineProps and defineEmits', () => {
       const { content, bindings } = compile(
         `
