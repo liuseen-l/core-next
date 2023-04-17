@@ -396,36 +396,27 @@ defineExpose({ foo: 123 })
     })
 
     test('w/ arry model', () => {
-      // const c = defineModel<[string,number]>(['count','title'],[{default:'1'},{default:0}])
-      // const c = defineModel(['count','title'],[{default:'1'},{default:0}])
-      // const c = defineModel('count',{default:0})
-      const { content } = compile(
+      const { content, bindings } = compile(
         `
         <script setup>
-        const c = defineModel(['count','title'],[{default:'1'},{default:0}])
+        const c = defineModel(['count','title'],[{default:1},{default:0}])
         </script>
         `,
         { defineModel: true }
       )
-      expect(content).toMatchInlineSnapshot(`
-        "import { useModel as _useModel } from 'vue'
-
-        export default {
-          props: {
-            \\"count\\": {default:'1'},
-            \\"title\\": {default:0},
-          },
-          emits: [\\"update:count\\", \\"update:title\\"],
-          setup(__props, { expose: __expose }) {
-          __expose();
-
-                const c = _useModel(__props, [\\"count\\",\\"title\\"])
-                
-        return { c }
-        }
-
-        }"
-      `)
+      assertCode(content)
+      expect(content).toMatch('props: {')
+      expect(content).toMatch('"count": {default:1},')
+      expect(content).toMatch('"title": {default:0},')
+      expect(content).toMatch('emits: ["update:count", "update:title"],')
+      expect(content).toMatch(`const c = _useModel(__props, ["count","title"])`)
+      expect(content).toMatch(`return { c }`)
+      expect(content).not.toMatch('defineModel')
+      expect(bindings).toStrictEqual({
+        count: BindingTypes.PROPS,
+        title: BindingTypes.PROPS,
+        c: BindingTypes.SETUP_REF
+      })
     })
 
     test('w/ defineProps and defineEmits', () => {

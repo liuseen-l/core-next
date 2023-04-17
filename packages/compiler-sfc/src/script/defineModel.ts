@@ -9,7 +9,6 @@ import {
   unwrapTSNode
 } from './utils'
 import { BindingTypes } from '@vue/compiler-dom'
-import { isArray } from '@vue/shared'
 
 export const DEFINE_MODEL = 'defineModel'
 
@@ -19,9 +18,10 @@ export interface ModelDecl {
   identifier: string | undefined
 }
 
-function wrapDefineModel(
+function doDefineModel(
   ctx: ScriptCompileContext,
   node: Node,
+  type: TSType | undefined,
   modelName: string,
   options: Node | undefined,
   runtimeOptionsArray: string[],
@@ -30,10 +30,6 @@ function wrapDefineModel(
   if (!ctx.options.defineModel || !isCallOf(node, DEFINE_MODEL)) {
     return false
   }
-
-  const type =
-    (node.typeParameters && node.typeParameters.params[0]) || undefined
-
   if (ctx.modelDecls[modelName])
     ctx.error(`duplicate model name ${JSON.stringify(modelName)}`, node)
 
@@ -71,6 +67,7 @@ function wrapDefineModel(
       runtimeOptions = optionsString!
     }
   }
+
   if (runtimeOptions.length > 0) runtimeOptionsArray.push(runtimeOptions)
 }
 
@@ -86,95 +83,62 @@ export function processDefineModel(
 
   const type =
     (node.typeParameters && node.typeParameters.params[0]) || undefined
-  let modelName: string | string[]
-  let options: Node | Node[] | undefined
+
+  let modelName: string[] = []
+  let options: Node[] = []
 
   const arg0 = node.arguments[0] && unwrapTSNode(node.arguments[0])
 
+  let isArray = false
+
   if (arg0 && arg0.type === 'StringLiteral') {
-    modelName = arg0.value
-    options = node.arguments[1]
+    modelName.push(arg0.value)
+    options.push(node.arguments[1])
   } else if (arg0 && arg0.type === 'ArrayExpression') {
-    modelName = []
     for (const e of arg0.elements) {
       if (e && e.type === 'StringLiteral') {
         modelName.push(e.value)
       }
     }
-
     options =
       node.arguments[1] && node.arguments[1].type === 'ArrayExpression'
         ? (node.arguments[1].elements as Node[])
-        : undefined
+        : options
+    isArray = true
   } else {
-    modelName = 'modelValue'
-    options = arg0
+    modelName.push('modelValue')
+    options.push(arg0)
   }
 
   const runtimeOptionsArray: string[] = []
 
-  if (isArray(modelName)) {
-    for (let i = 0; i < modelName.length; i++) {
-      if (ctx.modelDecls[modelName[i]])
-        ctx.error(`duplicate model name ${JSON.stringify(modelName)}`, node)
-      wrapDefineModel(
-        ctx,
-        node,
-        modelName[i],
-        options && (options as Node[])[i],
-        runtimeOptionsArray,
-        declId
-      )
-    }
-  } else {
-    if (ctx.modelDecls[modelName])
+  for (let i = 0; i < modelName.length; i++) {
+    if (ctx.modelDecls[modelName[i]])
       ctx.error(`duplicate model name ${JSON.stringify(modelName)}`, node)
-
-    const optionsString = options && ctx.getString(options as Node)
-
-    ctx.modelDecls[modelName] = {
+    doDefineModel(
+      ctx,
+      node,
       type,
-      options: optionsString,
-      identifier:
-        declId && declId.type === 'Identifier' ? declId.name : undefined
-    }
-    // register binding type
-    ctx.bindingMetadata[modelName] = BindingTypes.PROPS
-
-    let runtimeOptions = ''
-    if (options && !isArray(options)) {
-      if (options.type === 'ObjectExpression') {
-        const local = options.properties.find(
-          p =>
-            p.type === 'ObjectProperty' &&
-            ((p.key.type === 'Identifier' && p.key.name === 'local') ||
-              (p.key.type === 'StringLiteral' && p.key.value === 'local'))
-        ) as ObjectProperty
-
-        if (local) {
-          runtimeOptions = `{ ${ctx.getString(local)} }`
-        } else {
-          for (const p of options.properties) {
-            if (p.type === 'SpreadElement' || p.computed) {
-              runtimeOptions = optionsString!
-              break
-            }
-          }
-        }
-      } else {
-        runtimeOptions = optionsString!
-      }
-    }
-    if (runtimeOptions.length > 0) runtimeOptionsArray.push(runtimeOptions)
+      modelName[i],
+      options[i],
+      runtimeOptionsArray,
+      declId
+    )
   }
 
-  const str = runtimeOptionsArray.join(',')
+  const optionStr = runtimeOptionsArray.join(',')
 
   ctx.s.overwrite(
     ctx.startOffset! + node.start!,
     ctx.startOffset! + node.end!,
-    `${ctx.helper('useModel')}(__props, ${JSON.stringify(modelName)}${
-      str.length > 0 ? (isArray(modelName) ? `[${str}]` : `, ${str}`) : ''
+    `${ctx.helper('useModel')}(__props, ${
+      isArray ? JSON.stringify(modelName) : JSON.stringify(modelName[0])
+    }${
+      optionStr.length > 0
+        ? isArray
+          ? `[${optionStr}]`
+          : `, ${optionStr}`
+        : ''
     })`
   )
 
