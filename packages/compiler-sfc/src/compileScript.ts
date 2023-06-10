@@ -5,9 +5,9 @@ import {
   walkIdentifiers
 } from '@vue/compiler-dom'
 import { DEFAULT_FILENAME, SFCDescriptor, SFCScriptBlock } from './parse'
-import { ParserPlugin } from '@babel/parser'
+import type { ParserPlugin } from '@babel/parser'
 import { generateCodeFrame } from '@vue/shared'
-import {
+import type {
   Node,
   Declaration,
   ObjectPattern,
@@ -18,13 +18,14 @@ import {
   CallExpression
 } from '@babel/types'
 import { walk } from 'estree-walker'
-import { RawSourceMap } from 'source-map-js'
+import type { RawSourceMap } from 'source-map-js'
 import {
   processNormalScript,
   normalScriptDefaultVar
 } from './script/normalScript'
 import { CSS_VARS_HELPER, genCssVarsCode } from './style/cssVars'
-import { compileTemplate, SFCTemplateCompileOptions } from './compileTemplate'
+import { compileTemplate } from './compileTemplate'
+import type { SFCTemplateCompileOptions } from './compileTemplate'
 import { warnOnce } from './warn'
 import { shouldTransform, transformAST } from '@vue/reactivity-transform'
 import { transformDestructuredProps } from './script/definePropsDestructure'

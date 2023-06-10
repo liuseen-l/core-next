@@ -1,0 +1,13 @@
+@vue/compiler-core
+  导出:
+    baseCompile
+    baseParse
+@vue/compiler-dom
+  导出:
+    compiler:依赖@vue/compiler-core的baseCompile
+    parse：依赖@vue/compiler-core的baseParse
+@vue/compiler-sfc
+  导出:
+    parse:依赖于@vue/compiler-dom的parse
+    compilerScript:依赖ScriptCompileContext，而ScriptCompileContext当中会依赖于@bable/parse
+    compileTemplate:依赖于@vue/compiler-dom的compiler
